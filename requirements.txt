@@ -1,0 +1,14 @@
+Flask>=3.0.0
+Werkzeug>=3.0.0
+python-dotenv>=1.0.1
+
+# Azure
+azure-storage-blob>=12.20.0
+azure-identity>=1.16.0
+gunicorn>=21.0.0
+
+# Image handling
+Pillow>=10.0.0
+
+# (Optional) HTTP utilities
+requests>=2.31.0

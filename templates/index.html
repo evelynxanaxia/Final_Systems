@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>College Marketplace • Sell & Buy Items</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    :root{
+        --pink-main:#F7C9D4;
+        --white-accent:#ffcdea0e;
+        --pink-dark:#FF99C8;
+        --gray-text:#4a4a4a;
+        --gray-light:#f6f6f6;
+        --pink:#fbb0ec81;    
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto;
+      background:var(--white-accent);
+      color:var(--gray-text);
+    }
+
+    header{
+      background:var(--pink-main);
+      color:#4a4a4a;
+      padding:1rem 1.25rem;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      box-shadow:0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    header .brand{
+      font-weight:700;
+      font-size:1.1rem;
+    }
+
+    header .pill{
+      background:var(--pink-dark);
+      color:white;
+      padding:.25rem .6rem;
+      border-radius:.6rem;
+      font-weight:600;
+      font-size:.8rem;
+      margin-left:.5rem;
+    }
+
+    main{
+      max-width:900px;
+      margin:1.5rem auto;
+      padding:0 1rem;
+    }
+
+    .card{
+      background:white;
+      border-radius:15px;
+      padding:1.5rem;
+      margin-bottom:1.5rem;
+      box-shadow:0 3px 14px rgba(0,0,0,.06);
+      border:1px solid rgba(255,255,255,0.4);
+    }
+
+    h1,h2,h3{
+      color:#962d55;
+      margin:.3rem 0 .7rem;
+      font-weight:700;
+    }
+
+    .controls{
+      display:flex; 
+      flex-wrap:wrap; 
+      gap:.7rem;
+      align-items:center;
+      margin-top:1rem;
+    }
+
+    input[type=file], input, select{
+      padding:.5rem;
+      border:1px solid #ffd7e6;
+      border-radius:10px;
+      background:white;
+      flex:1;
+      min-width:150px;
+    }
+
+    button{
+      background:var(--pink-dark);
+      color:white;
+      border:1px solid var(--pink-dark);
+      padding:.6rem 1rem;
+      border-radius:12px;
+      font-weight:600;
+      cursor:pointer;
+      transition:0.2s;
+    }
+
+    button:hover{
+      background:#ff85bd;
+    }
+
+    button.secondary{
+      background:white;
+      color:var(--pink-dark);
+      border-color:var(--pink-dark);
+    }
+
+    .note{
+      background:#ffe8f3;
+      border:1px solid #ffd0e6;
+      padding:.7rem 1rem;
+      border-radius:10px;
+      color:#7a3a50;
+      margin:.6rem 0;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fill, minmax(180px,1fr));
+      gap:14px;
+      margin-top:1rem;
+    }
+
+    .item{
+      border:1px solid #ffd6e6;
+      border-radius:15px;
+      padding:8px;
+      background:white;
+      box-shadow:0 2px 10px rgba(0,0,0,.04);
+    }
+
+    .thumb{
+      width:100%;
+      height:180px;
+      object-fit:cover;
+      border-radius:12px;
+      background:#fbdbe8;
+    }
+
+    .cap{
+      font-size:.85rem;
+      color:#6b6b6b;
+      margin-top:.4rem;
+      text-align:center;
+    }
+
+    footer{
+      text-align:center;
+      color:#6b6b6b;
+      padding:1.5rem 0;
+    }
+
+    a{ color:#d16ba5; }
+    a:hover{ text-decoration:underline; }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="brand">
+      College Marketplace
+      <span class="pill">BETA</span>
+    </div>
+    <div class="muted">Upload items • Browse listings • Buy from students</div>
+    <button onclick="openCart()" style="background:white; color:var(--pink-dark); display:flex; align-items:center; gap:0.3rem;">
+      🛒 Cart (<span id="cartCount">0</span>)
+    </button>
+  </header>
+
+  <main>
+    <!-- Upload Section -->
+    <section class="card">
+      <h3>Sell an Item</h3>
+      <div class="note">
+        Upload an image and enter item details to list your item for sale.
+      </div>
+
+      <div class="controls">
+        <input type="file" id="f" accept="image/*" />
+        <input type="text" id="itemName" placeholder="Item name" required>
+        <input type="text" id="itemPrice" placeholder="Price" required>
+        <input type="text" id="itemSeller" placeholder="Your name" required>
+        <button onclick="send()">Upload</button>
+        <button class="secondary" onclick="resetForm()">Reset</button>
+      </div>
+    </section>
+
+    <!-- Gallery Section -->
+    <section class="card">
+      <div class="row" style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0">Items for Sale</h3>
+        <button class="secondary" onclick="loadGallery()">Refresh</button>
+      </div>
+      <div id="grid" class="grid"></div>
+    </section>
+  </main>
+
+  <!-- Cart Modal -->
+  <div id="cartModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; padding:2rem;">
+    <div style="background:white; max-width:600px; margin:0 auto; border-radius:20px; padding:2rem; max-height:90vh; overflow-y:auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <h2 style="margin:0;">Your Cart</h2>
+        <button onclick="closeCart()" style="background:#ddd; color:#333;">Close</button>
+      </div>
+      
+      <div id="cartItems"></div>
+      
+      <div id="checkoutForm" style="display:none; margin-top:2rem; padding-top:2rem; border-top:2px solid #ffd0e6;">
+        <h3>Contact Information</h3>
+        <input type="text" id="buyerName" placeholder="Your name" style="width:100%; margin:0.5rem 0;">
+        <input type="email" id="buyerEmail" placeholder="Your email" style="width:100%; margin:0.5rem 0;">
+        <input type="tel" id="buyerPhone" placeholder="Your phone number" style="width:100%; margin:0.5rem 0;">
+        <button onclick="submitCheckout()" style="width:100%; margin-top:1rem; padding:0.8rem; font-size:1rem;">
+          Contact Sellers
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <footer>Built for students • Evelyn's Marketplace 🤍</footer>
+
+  <script>
+    // Cart storage
+    let cart = [];
+
+    function updateCartCount() {
+      document.getElementById('cartCount').textContent = cart.length;
+    }
+
+    function addToCart(item) {
+      if(cart.find(i => i.name === item.name)) {
+        alert('Item already in cart!');
+        return;
+      }
+      cart.push(item);
+      updateCartCount();
+      alert('Added to cart!');
+    }
+
+    function removeFromCart(itemName) {
+      cart = cart.filter(i => i.name !== itemName);
+      updateCartCount();
+      displayCart();
+    }
+
+    function openCart() {
+      displayCart();
+      document.getElementById('cartModal').style.display = 'block';
+    }
+
+    function closeCart() {
+      document.getElementById('cartModal').style.display = 'none';
+    }
+
+    function displayCart() {
+      const cartItemsDiv = document.getElementById('cartItems');
+      const checkoutForm = document.getElementById('checkoutForm');
+      
+      if(cart.length === 0) {
+        cartItemsDiv.innerHTML = '<p style="text-align:center; color:#999;">Your cart is empty</p>';
+        checkoutForm.style.display = 'none';
+        return;
+      }
+
+      let total = 0;
+      cartItemsDiv.innerHTML = cart.map(item => {
+        const price = parseFloat(item.price) || 0;
+        total += price;
+        return `
+          <div style="display:flex; gap:1rem; padding:1rem; border:1px solid #ffd0e6; border-radius:12px; margin-bottom:1rem; align-items:center;">
+            <img src="${item.url}" style="width:80px; height:80px; object-fit:cover; border-radius:8px;">
+            <div style="flex:1;">
+              <strong>${item.item_name}</strong><br>
+              <small>Seller: ${item.seller}</small><br>
+              <strong style="color:var(--pink-dark);">$${item.price}</strong>
+            </div>
+            <button onclick="removeFromCart('${item.name}')" style="background:#ff6b9d; padding:0.5rem;">Remove</button>
+          </div>
+        `;
+      }).join('');
+
+      cartItemsDiv.innerHTML += `<div style="text-align:right; font-size:1.2rem; font-weight:bold; margin-top:1rem; padding-top:1rem; border-top:2px solid #ffd0e6;">Total: $${total.toFixed(2)}</div>`;
+      checkoutForm.style.display = 'block';
+    }
+
+    async function submitCheckout() {
+      const name = document.getElementById('buyerName').value;
+      const email = document.getElementById('buyerEmail').value;
+      const phone = document.getElementById('buyerPhone').value;
+
+      if(!name || !email || !phone) {
+        alert('Please fill in all fields');
+        return;
+      }
+
+      try {
+        const r = await fetch('/api/v1/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            buyer_name: name,
+            buyer_email: email,
+            buyer_phone: phone,
+            cart_items: cart
+          })
+        });
+
+        const json = await r.json();
+        
+        if(json.ok) {
+          alert(json.message);
+          cart = [];
+          updateCartCount();
+          closeCart();
+          document.getElementById('buyerName').value = '';
+          document.getElementById('buyerEmail').value = '';
+          document.getElementById('buyerPhone').value = '';
+        } else {
+          alert('Checkout failed: ' + json.error);
+        }
+      } catch(err) {
+        console.error('Checkout error:', err);
+        alert('Checkout failed');
+      }
+    }
+
+    async function send(){
+      const fileInput = document.getElementById('f');
+      const file = fileInput.files[0];
+      const name = document.getElementById('itemName').value;
+      const price = document.getElementById('itemPrice').value;
+      const seller = document.getElementById('itemSeller').value;
+
+      if(!file){
+        alert("Please choose a file.");
+        return;
+      }
+
+      if(!name || !price || !seller){
+        alert("Please fill in all fields.");
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("name", name);
+      fd.append("price", price);
+      fd.append("seller", seller);
+
+      try {
+        const r = await fetch("/api/v1/upload", {
+          method: "POST",
+          body: fd
+        });
+
+        const json = await r.json();
+        
+        if(json.ok){
+          alert("Upload successful!");
+          resetForm();
+          loadGallery();
+        } else {
+          alert(`Error: ${json.error}`);
+        }
+      } catch(err) {
+        console.error(err);
+        alert("Upload failed. Check console for details.");
+      }
+    }
+
+    function resetForm(){
+      document.getElementById('f').value = '';
+      document.getElementById('itemName').value = '';
+      document.getElementById('itemPrice').value = '';
+      document.getElementById('itemSeller').value = '';
+    }
+
+    async function loadGallery(){
+      try {
+        const r = await fetch("/api/v1/load-gallery");
+        const json = await r.json();
+        
+        if(json.ok){
+          const grid = document.getElementById('grid');
+          grid.innerHTML = '';
+          
+          if(json.items.length === 0){
+            grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; color:#999;">No items yet. Be the first to upload!</p>';
+            return;
+          }
+          
+          json.items.forEach(item => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'item';
+            itemDiv.innerHTML = `
+              <img src="${item.url}" class="thumb" alt="${item.item_name}">
+              <div class="cap">
+                <strong>${item.item_name}</strong><br>
+                $${item.price}<br>
+                <small>Seller: ${item.seller}</small>
+              </div>
+              <button onclick='addToCart(${JSON.stringify(item).replace(/'/g, "&apos;")})' style="margin-top:0.5rem; width:100%; padding:0.4rem; background:var(--pink-dark); color:white; border:none; border-radius:8px; cursor:pointer; font-size:0.85rem;">
+                Add to Cart
+              </button>
+              <button onclick="deleteItem('${item.name}', '${item.seller}')" style="margin-top:0.3rem; width:100%; padding:0.4rem; background:#ff6b9d; color:white; border:none; border-radius:8px; cursor:pointer; font-size:0.85rem;">
+                Delete
+              </button>
+            `;
+            grid.appendChild(itemDiv);
+          });
+        } else {
+          alert('Failed to load gallery: ' + json.error);
+        }
+      } catch(err) {
+        console.error("Gallery load failed:", err);
+        alert('Failed to load gallery');
+      }
+    }
+
+    async function deleteItem(blobName, seller){
+      const confirmDelete = confirm(`Delete this item from ${seller}?`);
+      if(!confirmDelete) return;
+
+      try {
+        const r = await fetch(`/api/v1/delete/${encodeURIComponent(blobName)}`, {
+          method: 'DELETE'
+        });
+
+        const json = await r.json();
+        
+        if(json.ok){
+          alert('Item deleted successfully!');
+          loadGallery();
+        } else {
+          alert('Failed to delete: ' + json.error);
+        }
+      } catch(err) {
+        console.error('Delete failed:', err);
+        alert('Failed to delete item');
+      }
+    }
+    async function addToCart(item){
+      try {
+        const r = await fetch(`/api/v1/add-to-cart/${encodeURIComponent(item.name)}`, {
+          method: 'POST'
+        });
+        const json = await r.json();
+        if(json.ok){
+          alert('Item added to cart successfully!');
+          loadGallery();
+        } else {
+          alert('Failed to add to cart: ' + json.error);
+        }
+      } catch(err) {
+        console.error('Add to cart failed:', err);
+        alert('Failed to add to cart');
+      }
+    }
+
+    async function getCart(){
+      try {
+        const r = await fetch('/api/v1/cart');
+        const json = await r.json();
+        if(json.ok){
+          cart = json.cart;
+          updateCartCount();
+          displayCart();
+        } else {
+          alert('Failed to get cart: ' + json.error);
+        }
+      } catch(err) {
+        console.error('Cart fetch failed:', err);
+        alert('Failed to get cart');
+      }
+    }
+
+    async function submitCheckout(){
+      try {
+        const r = await fetch('/api/v1/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            buyer_name: document.getElementById('buyerName').value,
+            buyer_email: document.getElementById('buyerEmail').value,
+            buyer_phone: document.getElementById('buyerPhone').value,
+            cart_items: cart
+          })
+        });
+        const json = await r.json();
+        if(json.ok){
+          alert(json.message);
+          cart = [];
+          updateCartCount();
+          closeCart();
+          document.getElementById('buyerName').value = '';
+          document.getElementById('buyerEmail').value = '';
+          document.getElementById('buyerPhone').value = '';
+        } else {
+          alert('Checkout failed: ' + json.error);
+        }
+      } catch(err) {
+        console.error('Checkout error:', err);
+        alert('Checkout failed');
+      }
+    }
+
+    // Load gallery when page loads
+    window.addEventListener('DOMContentLoaded', loadGallery);
+  </script>
+</body>
+</html>
