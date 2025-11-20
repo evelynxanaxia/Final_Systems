@@ -3,12 +3,13 @@ import os, uuid, filetype
 from datetime import datetime
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from dotenv import load_dotenv
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 load_dotenv()
 connection_string = os.environ.get('STORAGE_KEY')
-
-print(f"Connection string loaded: {connection_string[:50] if connection_string else 'NOT FOUND'}...")
-print(f"Connection string length: {len(connection_string) if connection_string else 0}")
+SENDGRID_KEY = os.environ.get('SENDGRID_API_KEY')
+FROM_EMAIL = "noreply@yourdomain.com"  # change this to a verified sender in SendGrid
 
 app = Flask(__name__)
 
@@ -18,50 +19,53 @@ if not connection_string:
 blob_service_client = BlobServiceClient.from_connection_string(connection_string)
 CONTAINER_NAME = "images-demo"
 
+def send_email(to, subject, html_content):
+    """Send email through SendGrid."""
+    if not SENDGRID_KEY:
+        print("ERROR: SendGrid API key not configured!")
+        return False
 
-# ------------------------------
-# HEALTH CHECK
-# ------------------------------
+    message = Mail(
+        from_email=FROM_EMAIL,
+        to_emails=to,
+        subject=subject,
+        html_content=html_content
+    )
+
+    try:
+        sg = SendGridAPIClient(SENDGRID_KEY)
+        response = sg.send(message)
+        print(f"Email sent to {to} — Status {response.status_code}")
+        return True
+    except Exception as e:
+        print(f"Email error to {to}: {e}")
+        return False
+
+
 @app.route('/api/v1/health')
 def health():
     return jsonify({'status': 'ok'}), 200
 
 
-# ------------------------------
-# UPLOAD ITEM LISTING
-# ------------------------------
 @app.route('/api/v1/upload', methods=['POST'])
 def upload():
     try:
-        print("=== UPLOAD REQUEST RECEIVED ===")
-        
         file = request.files.get("file")
         item_name = request.form.get("name")
         price = request.form.get("price")
         seller = request.form.get("seller")
 
-        print(f"Name: {item_name}")
-        print(f"Price: {price}")
-        print(f"Seller: {seller}")
-        print(f"File: {file}")
-
         if not file:
             return jsonify({"ok": False, "error": "No file uploaded"}), 400
         
-        # Read file into bytes
         file_bytes = file.read()
-        print(f"File bytes length: {len(file_bytes)}")
 
-        # Validate file type
         kind = filetype.guess(file_bytes)
         if not kind or kind.mime not in ["image/jpeg", "image/png"]:
             return jsonify({"ok": False, "error": "File must be JPEG or PNG"}), 400
 
-        # Generate unique filename
         blob_name = f"{seller}-{uuid.uuid4()}.jpg"
-        print(f"Blob name: {blob_name}")
 
-        # Upload to Azure
         container_client = blob_service_client.get_container_client(CONTAINER_NAME)
         blob_client = container_client.get_blob_client(blob_name)
 
@@ -76,23 +80,15 @@ def upload():
             content_settings=ContentSettings(content_type="image/jpeg")
         )
 
-        print(f"Upload successful! URL: {blob_client.url}")
         return jsonify({"ok": True, "url": blob_client.url}), 200
 
     except Exception as e:
-        print(f"EXCEPTION: {e}")
-        import traceback
-        traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
-# ------------------------------
-# LOAD GALLERY
-# ------------------------------
 @app.route('/api/v1/load-gallery', methods=['GET'])
 def load_gallery():
     try:
-        print("=== LOAD GALLERY REQUEST RECEIVED ===")
         container_client = blob_service_client.get_container_client(CONTAINER_NAME)
         blobs = container_client.list_blobs()
         
@@ -108,63 +104,65 @@ def load_gallery():
                 "price": properties.metadata.get("price", "N/A"),
                 "seller": properties.metadata.get("seller", "Unknown")
             })
-        
-        print(f"Found {len(items)} items")
+
         return jsonify({"ok": True, "items": items}), 200
         
     except Exception as e:
-        print(f"EXCEPTION: {e}")
-        import traceback
-        traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
-# ------------------------------
-# DELETE ITEM
-# ------------------------------
 @app.route('/api/v1/delete/<blob_name>', methods=['DELETE'])
 def delete_item(blob_name):
     try:
-        print(f"=== DELETE REQUEST FOR: {blob_name} ===")
-        
         container_client = blob_service_client.get_container_client(CONTAINER_NAME)
         blob_client = container_client.get_blob_client(blob_name)
-        
-        # Delete the blob
         blob_client.delete_blob()
-        
-        print(f"Successfully deleted: {blob_name}")
         return jsonify({"ok": True, "message": "Item deleted successfully"}), 200
         
     except Exception as e:
-        print(f"EXCEPTION: {e}")
-        import traceback
-        traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
-# ------------------------------
-# CHECKOUT - Contact Seller
-# ------------------------------
+# -------------------------
+# CHECKOUT — SEND EMAILS
+# -------------------------
 @app.route('/api/v1/checkout', methods=['POST'])
 def checkout():
     try:
-        print("=== CHECKOUT REQUEST RECEIVED ===")
         data = request.json
         
         buyer_name = data.get('buyer_name')
         buyer_email = data.get('buyer_email')
         buyer_phone = data.get('buyer_phone')
         cart_items = data.get('cart_items', [])
-        
-        print(f"Buyer: {buyer_name} ({buyer_email}, {buyer_phone})")
-        print(f"Items: {len(cart_items)}")
-        
+
+        # ---- Email each seller ----
         for item in cart_items:
-            print(f"  - {item.get('item_name')} (${item.get('price')}) from {item.get('seller')}")
-        
-        # In a real app, you'd send emails here to connect buyer and sellers
-        
+            seller = item.get('seller')
+            price = item.get('price')
+            item_name = item.get('item_name')
+
+            seller_email = f"{seller.replace(' ', '').lower()}@example.com"  # You can replace this with real metadata later
+
+            email_body = f"""
+            <h2>New Buyer Request</h2>
+            <p>{buyer_name} wants to buy <strong>{item_name}</strong> (${price})</p>
+            <p>Contact Info:</p>
+            <ul>
+              <li>Email: {buyer_email}</li>
+              <li>Phone: {buyer_phone}</li>
+            </ul>
+            """
+
+            send_email(seller_email, "New Marketplace Inquiry", email_body)
+
+        # ---- Email Buyer ----
+        send_email(
+            buyer_email,
+            "Order Received",
+            "<p>Your order request has been sent to the sellers. They will contact you soon.</p>"
+        )
+
         return jsonify({
             "ok": True, 
             "message": "Order placed! Sellers will contact you soon.",
@@ -172,15 +170,9 @@ def checkout():
         }), 200
         
     except Exception as e:
-        print(f"EXCEPTION: {e}")
-        import traceback
-        traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
-# ------------------------------
-# FRONTEND ROUTE
-# ------------------------------
 @app.route('/')
 def index():
     return render_template('index.html')
