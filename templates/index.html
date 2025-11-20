@@ -223,7 +223,9 @@
   <footer>Built for students • Evelyn's Marketplace 🤍</footer>
 
   <script>
-    // Cart storage
+    // -------------------
+    // CART STATE (LOCAL)
+    // -------------------
     let cart = [];
 
     function updateCartCount() {
@@ -286,38 +288,27 @@
       checkoutForm.style.display = 'block';
     }
 
+    // -------------------
+    // CHECKOUT
+    // -------------------
     async function submitCheckout() {
-      const name = document.getElementById('buyerName').value;
-      const email = document.getElementById('buyerEmail').value;
-      const phone = document.getElementById('buyerPhone').value;
-
-      if(!name || !email || !phone) {
-        alert('Please fill in all fields');
-        return;
-      }
-
       try {
         const r = await fetch('/api/v1/checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            buyer_name: name,
-            buyer_email: email,
-            buyer_phone: phone,
+            buyer_name: document.getElementById('buyerName').value,
+            buyer_email: document.getElementById('buyerEmail').value,
+            buyer_phone: document.getElementById('buyerPhone').value,
             cart_items: cart
           })
         });
-
         const json = await r.json();
-        
-        if(json.ok) {
+        if(json.ok){
           alert(json.message);
           cart = [];
           updateCartCount();
           closeCart();
-          document.getElementById('buyerName').value = '';
-          document.getElementById('buyerEmail').value = '';
-          document.getElementById('buyerPhone').value = '';
         } else {
           alert('Checkout failed: ' + json.error);
         }
@@ -327,6 +318,9 @@
       }
     }
 
+    // -------------------
+    // UPLOAD
+    // -------------------
     async function send(){
       const fileInput = document.getElementById('f');
       const file = fileInput.files[0];
@@ -336,11 +330,6 @@
 
       if(!file){
         alert("Please choose a file.");
-        return;
-      }
-
-      if(!name || !price || !seller){
-        alert("Please fill in all fields.");
         return;
       }
 
@@ -378,6 +367,9 @@
       document.getElementById('itemSeller').value = '';
     }
 
+    // -------------------
+    // LOAD ITEMS
+    // -------------------
     async function loadGallery(){
       try {
         const r = await fetch("/api/v1/load-gallery");
@@ -420,6 +412,9 @@
       }
     }
 
+    // -------------------
+    // DELETE ITEM
+    // -------------------
     async function deleteItem(blobName, seller){
       const confirmDelete = confirm(`Delete this item from ${seller}?`);
       if(!confirmDelete) return;
@@ -442,72 +437,10 @@
         alert('Failed to delete item');
       }
     }
-    async function addToCart(item){
-      try {
-        const r = await fetch(`/api/v1/add-to-cart/${encodeURIComponent(item.name)}`, {
-          method: 'POST'
-        });
-        const json = await r.json();
-        if(json.ok){
-          alert('Item added to cart successfully!');
-          loadGallery();
-        } else {
-          alert('Failed to add to cart: ' + json.error);
-        }
-      } catch(err) {
-        console.error('Add to cart failed:', err);
-        alert('Failed to add to cart');
-      }
-    }
 
-    async function getCart(){
-      try {
-        const r = await fetch('/api/v1/cart');
-        const json = await r.json();
-        if(json.ok){
-          cart = json.cart;
-          updateCartCount();
-          displayCart();
-        } else {
-          alert('Failed to get cart: ' + json.error);
-        }
-      } catch(err) {
-        console.error('Cart fetch failed:', err);
-        alert('Failed to get cart');
-      }
-    }
-
-    async function submitCheckout(){
-      try {
-        const r = await fetch('/api/v1/checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            buyer_name: document.getElementById('buyerName').value,
-            buyer_email: document.getElementById('buyerEmail').value,
-            buyer_phone: document.getElementById('buyerPhone').value,
-            cart_items: cart
-          })
-        });
-        const json = await r.json();
-        if(json.ok){
-          alert(json.message);
-          cart = [];
-          updateCartCount();
-          closeCart();
-          document.getElementById('buyerName').value = '';
-          document.getElementById('buyerEmail').value = '';
-          document.getElementById('buyerPhone').value = '';
-        } else {
-          alert('Checkout failed: ' + json.error);
-        }
-      } catch(err) {
-        console.error('Checkout error:', err);
-        alert('Checkout failed');
-      }
-    }
-
-    // Load gallery when page loads
+    // -------------------
+    // INIT
+    // -------------------
     window.addEventListener('DOMContentLoaded', loadGallery);
   </script>
 </body>
