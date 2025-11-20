@@ -7,6 +7,7 @@ filetype>=1.2.0
 azure-storage-blob>=12.20.0
 azure-identity>=1.16.0
 gunicorn>=21.0.0
+sendgrid>=7.1.0
 
 # Image handling
 Pillow>=10.0.0
