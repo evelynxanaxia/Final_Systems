@@ -3,13 +3,9 @@ import os, uuid, filetype
 from datetime import datetime
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from dotenv import load_dotenv
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
 
 load_dotenv()
 connection_string = os.environ.get('STORAGE_KEY')
-SENDGRID_KEY = os.environ.get('SENDGRID_API_KEY')
-FROM_EMAIL = "noreply@yourdomain.com"  # change this to a verified sender in SendGrid
 
 app = Flask(__name__)
 
@@ -18,29 +14,6 @@ if not connection_string:
 
 blob_service_client = BlobServiceClient.from_connection_string(connection_string)
 CONTAINER_NAME = "images-demo"
-
-def send_email(to, subject, html_content):
-    """Send email through SendGrid."""
-    if not SENDGRID_KEY:
-        print("ERROR: SendGrid API key not configured!")
-        return False
-
-    message = Mail(
-        from_email=FROM_EMAIL,
-        to_emails=to,
-        subject=subject,
-        html_content=html_content
-    )
-
-    try:
-        sg = SendGridAPIClient(SENDGRID_KEY)
-        response = sg.send(message)
-        print(f"Email sent to {to} — Status {response.status_code}")
-        return True
-    except Exception as e:
-        print(f"Email error to {to}: {e}")
-        return False
-
 
 @app.route('/api/v1/health')
 def health():
