@@ -124,7 +124,7 @@ def delete_item(blob_name):
 
 
 # -------------------------
-# CHECKOUT — SEND EMAILS
+# CHECKOUT 
 # -------------------------
 @app.route('/api/v1/checkout', methods=['POST'])
 def checkout():
@@ -135,43 +135,25 @@ def checkout():
         buyer_email = data.get('buyer_email')
         buyer_phone = data.get('buyer_phone')
         cart_items = data.get('cart_items', [])
-
-        # ---- Email each seller ----
+        
+        print(f"=== CHECKOUT REQUEST ===")
+        print(f"Buyer: {buyer_name} ({buyer_email}, {buyer_phone})")
+        print(f"Items: {len(cart_items)}")
+        
         for item in cart_items:
-            seller = item.get('seller')
-            price = item.get('price')
-            item_name = item.get('item_name')
-
-            seller_email = f"{seller.replace(' ', '').lower()}@example.com"  # You can replace this with real metadata later
-
-            email_body = f"""
-            <h2>New Buyer Request</h2>
-            <p>{buyer_name} wants to buy <strong>{item_name}</strong> (${price})</p>
-            <p>Contact Info:</p>
-            <ul>
-              <li>Email: {buyer_email}</li>
-              <li>Phone: {buyer_phone}</li>
-            </ul>
-            """
-
-            send_email(seller_email, "New Marketplace Inquiry", email_body)
-
-        # ---- Email Buyer ----
-        send_email(
-            buyer_email,
-            "Order Received",
-            "<p>Your order request has been sent to the sellers. They will contact you soon.</p>"
-        )
-
+            print(f"  - {item.get('item_name')} (${item.get('price')}) from {item.get('seller')}")
+        
         return jsonify({
             "ok": True, 
-            "message": "Order placed! Sellers will contact you soon.",
+            "message": "Order placed! Check your email for seller contact info.",
             "order_id": str(uuid.uuid4())
         }), 200
         
     except Exception as e:
+        print(f"EXCEPTION: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"ok": False, "error": str(e)}), 500
-
 
 @app.route('/')
 def index():
