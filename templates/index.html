@@ -165,9 +165,18 @@
       <span class="pill">BETA</span>
     </div>
     <div class="muted">Upload items • Browse listings • Buy from students</div>
-    <button onclick="openCart()" style="background:white; color:var(--pink-dark); display:flex; align-items:center; gap:0.3rem;">
-      🛒 Cart (<span id="cartCount">0</span>)
-    </button>
+    <div style="display:flex; gap:0.5rem; align-items:center;">
+      <button onclick="openCart()" style="background:white; color:var(--pink-dark); display:flex; align-items:center; gap:0.3rem;">
+        🛒 Cart (<span id="cartCount">0</span>)
+      </button>
+      <span id="userInfo" style="display:none; color:#4a4a4a;">
+        Welcome, <span id="userName"></span>! 
+        <button onclick="logout()" style="padding:0.4rem 0.8rem; font-size:0.9rem;">Logout</button>
+      </span>
+      <button id="loginBtn" onclick="openLoginModal()" style="background:white; color:var(--pink-dark);">
+        Login / Register
+      </button>
+    </div>
   </header>
 
   <main>
@@ -220,18 +229,155 @@
     </div>
   </div>
 
+  <!-- Login/Register Modal -->
+  <div id="loginModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:1000; padding:2rem;">
+    <div style="background:white; max-width:400px; margin:2rem auto; border-radius:20px; padding:2rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <h2 style="margin:0;" id="authTitle">Login</h2>
+        <button onclick="closeLoginModal()" style="background:#ddd; color:#333;">Close</button>
+      </div>
+      
+      <div id="authForm">
+        <input type="text" id="authName" placeholder="Your name (optional for login)" style="width:100%; margin:0.5rem 0; display:none;">
+        <input type="email" id="authEmail" placeholder="Email" style="width:100%; margin:0.5rem 0;">
+        <input type="password" id="authPassword" placeholder="Password" style="width:100%; margin:0.5rem 0;">
+        
+        <button id="authSubmitBtn" onclick="handleAuth()" style="width:100%; margin-top:1rem; padding:0.8rem;">
+          Login
+        </button>
+        
+        <div style="text-align:center; margin-top:1rem;">
+          <a href="#" onclick="toggleAuthMode(); return false;" style="color:var(--pink-dark); text-decoration:none;">
+            <span id="authToggleText">Don't have an account? Register</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <footer>Built for students • Evelyn's Marketplace 🤍</footer>
 
   <script>
-    // -------------------
-    // CART STATE (LOCAL)
-    // -------------------
+    // State management
     let cart = [];
+    let currentUser = null;
+    let isLoginMode = true;
 
     function updateCartCount() {
       document.getElementById('cartCount').textContent = cart.length;
     }
 
+    // -------------------
+    // AUTHENTICATION UI
+    // -------------------
+    function openLoginModal() {
+      document.getElementById('loginModal').style.display = 'block';
+    }
+
+    function closeLoginModal() {
+      document.getElementById('loginModal').style.display = 'none';
+    }
+
+    function toggleAuthMode() {
+      isLoginMode = !isLoginMode;
+      const nameField = document.getElementById('authName');
+      const title = document.getElementById('authTitle');
+      const submitBtn = document.getElementById('authSubmitBtn');
+      const toggleText = document.getElementById('authToggleText');
+      
+      if(isLoginMode) {
+        title.textContent = 'Login';
+        submitBtn.textContent = 'Login';
+        toggleText.textContent = "Don't have an account? Register";
+        nameField.style.display = 'none';
+      } else {
+        title.textContent = 'Register';
+        submitBtn.textContent = 'Register';
+        toggleText.textContent = 'Already have an account? Login';
+        nameField.style.display = 'block';
+      }
+    }
+
+    async function handleAuth() {
+      const email = document.getElementById('authEmail').value;
+      const password = document.getElementById('authPassword').value;
+      const name = document.getElementById('authName').value;
+
+      if(!email || !password) {
+        alert('Please enter email and password');
+        return;
+      }
+
+      const endpoint = isLoginMode ? '/api/v1/auth/login' : '/api/v1/auth/register';
+      const body = isLoginMode 
+        ? { email, password }
+        : { email, password, name: name || 'User' };
+
+      try {
+        const r = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        const json = await r.json();
+        
+        if(json.ok) {
+          alert(json.message);
+          if(isLoginMode && json.user) {
+            currentUser = json.user;
+            updateUserUI();
+          }
+          closeLoginModal();
+          // Clear form
+          document.getElementById('authEmail').value = '';
+          document.getElementById('authPassword').value = '';
+          document.getElementById('authName').value = '';
+        } else {
+          alert(json.error || 'Authentication failed');
+        }
+      } catch(err) {
+        console.error('Auth error:', err);
+        alert('Authentication failed');
+      }
+    }
+
+    async function logout() {
+      try {
+        const r = await fetch('/api/v1/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        const json = await r.json();
+        if(json.ok) {
+          currentUser = null;
+          updateUserUI();
+          alert('Logged out successfully');
+        }
+      } catch(err) {
+        console.error('Logout error:', err);
+      }
+    }
+
+    function updateUserUI() {
+      const userInfo = document.getElementById('userInfo');
+      const userName = document.getElementById('userName');
+      const loginBtn = document.getElementById('loginBtn');
+      
+      if(currentUser) {
+        userName.textContent = currentUser.name;
+        userInfo.style.display = 'block';
+        loginBtn.style.display = 'none';
+      } else {
+        userInfo.style.display = 'none';
+        loginBtn.style.display = 'block';
+      }
+    }
+
+    // -------------------
+    // CART FUNCTIONS
+    // -------------------
     function addToCart(item) {
       if(cart.find(i => i.name === item.name)) {
         alert('Item already in cart!');
@@ -289,26 +435,40 @@
     }
 
     // -------------------
-    // CHECKOUT
+    // CHECKOUT (OPTIONAL LOGIN)
     // -------------------
     async function submitCheckout() {
+      const name = document.getElementById('buyerName').value;
+      const email = document.getElementById('buyerEmail').value;
+      const phone = document.getElementById('buyerPhone').value;
+
+      if(!name || !email || !phone) {
+        alert('Please fill in all fields');
+        return;
+      }
+
       try {
         const r = await fetch('/api/v1/checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            buyer_name: document.getElementById('buyerName').value,
-            buyer_email: document.getElementById('buyerEmail').value,
-            buyer_phone: document.getElementById('buyerPhone').value,
+            buyer_name: name,
+            buyer_email: email,
+            buyer_phone: phone,
             cart_items: cart
           })
         });
+
         const json = await r.json();
-        if(json.ok){
+        
+        if(json.ok) {
           alert(json.message);
           cart = [];
           updateCartCount();
           closeCart();
+          document.getElementById('buyerName').value = '';
+          document.getElementById('buyerEmail').value = '';
+          document.getElementById('buyerPhone').value = '';
         } else {
           alert('Checkout failed: ' + json.error);
         }
@@ -319,9 +479,15 @@
     }
 
     // -------------------
-    // UPLOAD
+    // UPLOAD (REQUIRES LOGIN)
     // -------------------
     async function send(){
+      if(!currentUser) {
+        alert('Please login to upload items');
+        openLoginModal();
+        return;
+      }
+
       const fileInput = document.getElementById('f');
       const file = fileInput.files[0];
       const name = document.getElementById('itemName').value;
@@ -333,11 +499,17 @@
         return;
       }
 
+      if(!name || !price || !seller){
+        alert("Please fill in all fields.");
+        return;
+      }
+
       const fd = new FormData();
       fd.append("file", file);
       fd.append("name", name);
       fd.append("price", price);
       fd.append("seller", seller);
+      fd.append("seller_email", currentUser.email);  // Automatically add seller's email
 
       try {
         const r = await fetch("/api/v1/upload", {
@@ -348,7 +520,7 @@
         const json = await r.json();
         
         if(json.ok){
-          alert("Upload successful!");
+          alert("Upload successful! You'll receive an email if someone is interested.");
           resetForm();
           loadGallery();
         } else {
@@ -367,9 +539,6 @@
       document.getElementById('itemSeller').value = '';
     }
 
-    // -------------------
-    // LOAD ITEMS
-    // -------------------
     async function loadGallery(){
       try {
         const r = await fetch("/api/v1/load-gallery");
@@ -412,9 +581,6 @@
       }
     }
 
-    // -------------------
-    // DELETE ITEM
-    // -------------------
     async function deleteItem(blobName, seller){
       const confirmDelete = confirm(`Delete this item from ${seller}?`);
       if(!confirmDelete) return;
@@ -438,9 +604,7 @@
       }
     }
 
-    // -------------------
-    // INIT
-    // -------------------
+    // Load gallery when page loads
     window.addEventListener('DOMContentLoaded', loadGallery);
   </script>
 </body>

@@ -13,3 +13,10 @@ Pillow>=10.0.0
 
 # (Optional) HTTP utilities
 requests>=2.31.0
+
+# mangodb
+pymongo>=4.6.0
+bcrypt>=4.1.0
+
+#emails
+resend>=0.8.0
