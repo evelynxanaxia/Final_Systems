@@ -187,7 +187,8 @@ def load_gallery():
                 "url": blob_client.url,
                 "item_name": properties.metadata.get("item_name", "Unknown"),
                 "price": properties.metadata.get("price", "N/A"),
-                "seller": properties.metadata.get("seller", "Unknown")
+                "seller": properties.metadata.get("seller", "Unknown"),
+                "seller_email": properties.metadata.get("seller_email", "")  # ADD THIS
             })
 
         return jsonify({"ok": True, "items": items}), 200
