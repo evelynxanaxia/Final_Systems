@@ -11,7 +11,7 @@
 **Course Concept(s):** Cloud Storage (Azure Blob Storage for images), RESTful API Design (Flask endpoints), Web Application Development (Full-stack Flask app), Cloud Deployment (Azure App Service)
 
 **Architecture Diagram:** 
-![System Architecture](assets/architecture.png)
+See `/assets` folder for png
 
 **Data/Models/Services:** 
 - **Azure Blob Storage** (`images-demo` container) - Stores user-uploaded product images (JPEG/PNG format, typically 500KB-5MB per image). Images include metadata (item name, price, seller info). Free tier: 5GB storage.
